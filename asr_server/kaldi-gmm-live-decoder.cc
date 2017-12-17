@@ -150,8 +150,7 @@ int main(int argc, char *argv[]) {
             int32 samp_offset = 0;
             while (samp_offset < data.Dim()) {
                 int32 samp_remaining = data.Dim() - samp_offset;
-                int32 num_samp = chunk_length < samp_remaining ? chunk_length
-                                                                                                             : samp_remaining;
+                int32 num_samp = chunk_length < samp_remaining ? chunk_length : samp_remaining;
 
                 SubVector<BaseFloat> wave_part(data, samp_offset, num_samp);
                 decoder.FeaturePipeline().AcceptWaveform(samp_freq, wave_part);
