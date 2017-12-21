@@ -1,5 +1,19 @@
 import re
 import subprocess
+from abc import ABC, abstractmethod
+
+
+class DecodingEvent:
+    __slots__ = ('transcription')
+
+    def __init__(self, transcription):
+        self.transcription = transcription
+
+
+class DecodingListener(ABC):
+    @abstractmethod
+    def on_decoding(self, decoding_event: DecodingEvent):
+        pass
 
 
 class FileDecoder:
@@ -25,3 +39,38 @@ class FileDecoder:
             match = re.findall(r'^{}\t(.+)'.format(wav_path), result)
             if match:
                 return match[0].strip()
+
+
+class StreamDecoder:
+    def __init__(self, callback):
+        self._process = subprocess.Popen(['./stream-decoder',
+                                          '--config=./model/online_decoding.conf',
+                                          './model/words.txt',
+                                          './model/HCLG.fst',
+                                          '-'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        self._decoding = True
+        self._callback = callback
+
+    def decode(self, frames):
+        self._write(frames)
+        transcription = self._read()
+        return transcription
+
+    def _write(self, frames):
+        self._process.stdin.write(frames)
+        self._process.stdin.flush()
+
+    def _read(self):
+        while self._decoding:
+            result = self._process.stdout.readline().decode('UTF-8')
+            self._callback(result.strip())
+
+
+if __name__ == '__main__':
+    decoder = StreamDecoder(print)
+
+    import wave
+    with wave.open('../1.wav', mode='rb') as f_in:
+        nframes = f_in.getnframes()
+        frames = f_in.readframes(nframes)
+        decoder.decode(frames)

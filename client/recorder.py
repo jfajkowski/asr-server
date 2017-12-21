@@ -22,14 +22,16 @@ class RecordingListener(ABC):
 
 
 class Recorder:
-    def __init__(self, channels=1, sample_rate=16000, chunk_duration=10, sample_format=pyaudio.paInt16):
+    SAMPLE_FORMAT = pyaudio.paInt16
+
+    def __init__(self, channels=1, sample_rate=16000, chunk_duration=10):
         self.__engine = pyaudio.PyAudio()
         self.__stream = None
         self.__recording_listeners: List[RecordingListener] = []
         self.__channels = channels
-        self.__format = sample_format
+        self.__format = Recorder.SAMPLE_FORMAT
         self.__sample_rate = sample_rate
-        self.__sample_size = self.__engine.get_sample_size(sample_format)
+        self.__sample_size = self.__engine.get_sample_size(Recorder.SAMPLE_FORMAT)
         self.__samples = bytearray()
         self.__chunk_size = int(sample_rate * chunk_duration / 1000)
 

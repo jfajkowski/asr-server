@@ -8,7 +8,7 @@ CXXFLAGS += -I $(KALDI_DIR)/src
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
-BINFILES = kaldi-gmm-live-decoder file-decoder
+BINFILES = stream-decoder file-decoder
 
 OBJFILES =
 

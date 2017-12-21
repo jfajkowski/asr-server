@@ -8,24 +8,26 @@ from recorder import RecordingListener, RecordingEvent
 
 
 class Plotter(RecordingListener):
-    def __init__(self, max_fps=120, samples_per_window=2048, window_height=10000, sample_format=pyaudio.paInt16):
+    SAMPLE_FORMAT = pyaudio.paInt16
+
+    def __init__(self, max_fps=120, samples_per_window=2048, window_height=10000):
         super().__init__()
         self.__engine = pyaudio.PyAudio()
         self.__min_interval = 1 / max_fps
         self.__prev_time = time.time()
         self.__window_height = window_height
         self.__samples_per_window = samples_per_window
-        self.__sample_size = self.__engine.get_sample_size(sample_format)
+        self.__sample_size = self.__engine.get_sample_size(Plotter.SAMPLE_FORMAT)
         self.__samples = bytearray()
         self.__window_size = samples_per_window * self.__sample_size
 
     @property
-    def plotting(self):
+    def is_plotting(self):
         return plt.get_fignums()
 
     def show_plot(self):
         fig, signal_line, envelope_line = self.init_plot()
-        while self.plotting:
+        while self.is_plotting:
             if len(self.__samples) > self.__window_size:
                 self.update_plot(fig, signal_line, envelope_line)
             self.maintain_fps()
