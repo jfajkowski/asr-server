@@ -24,7 +24,7 @@ class RecordingListener(ABC):
 class Recorder:
     SAMPLE_FORMAT = pyaudio.paInt16
 
-    def __init__(self, channels=1, sample_rate=16000, chunk_duration=10):
+    def __init__(self, channels=1, sample_rate=16000, chunk_size=1024):
         self.__engine = pyaudio.PyAudio()
         self.__stream = None
         self.__recording_listeners: List[RecordingListener] = []
@@ -33,7 +33,7 @@ class Recorder:
         self.__sample_rate = sample_rate
         self.__sample_size = self.__engine.get_sample_size(Recorder.SAMPLE_FORMAT)
         self.__samples = bytearray()
-        self.__chunk_size = int(sample_rate * chunk_duration / 1000)
+        self.__frames_per_buffer = int(chunk_size / self.__sample_size)
 
     @property
     def channels(self):
@@ -64,7 +64,7 @@ class Recorder:
         self.__stream = self.__engine.open(format=self.__format,
                                            channels=self.__channels,
                                            rate=self.__sample_rate,
-                                           frames_per_buffer=self.__chunk_size,
+                                           frames_per_buffer=self.__frames_per_buffer,
                                            input=True,
                                            stream_callback=self._recording_callback)
 

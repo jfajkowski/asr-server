@@ -1,19 +1,7 @@
+import logging
 import re
 import subprocess
-from abc import ABC, abstractmethod
-
-
-class DecodingEvent:
-    __slots__ = ('transcription')
-
-    def __init__(self, transcription):
-        self.transcription = transcription
-
-
-class DecodingListener(ABC):
-    @abstractmethod
-    def on_decoding(self, decoding_event: DecodingEvent):
-        pass
+from threading import Thread
 
 
 class FileDecoder:
@@ -43,6 +31,8 @@ class FileDecoder:
 
 class StreamDecoder:
     def __init__(self, callback):
+        self.sample_rate = 16000
+
         self._process = subprocess.Popen(['./stream-decoder',
                                           '--config=./model/online_decoding.conf',
                                           './model/words.txt',
@@ -50,11 +40,11 @@ class StreamDecoder:
                                           '-'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
         self._decoding = True
         self._callback = callback
+        self._thread = Thread(target=self._read)
+        self._thread.start()
 
     def decode(self, frames):
         self._write(frames)
-        transcription = self._read()
-        return transcription
 
     def _write(self, frames):
         self._process.stdin.write(frames)
@@ -62,15 +52,6 @@ class StreamDecoder:
 
     def _read(self):
         while self._decoding:
-            result = self._process.stdout.readline().decode('UTF-8')
-            self._callback(result.strip())
-
-
-if __name__ == '__main__':
-    decoder = StreamDecoder(print)
-
-    import wave
-    with wave.open('../1.wav', mode='rb') as f_in:
-        nframes = f_in.getnframes()
-        frames = f_in.readframes(nframes)
-        decoder.decode(frames)
+            result = self._process.stdout.readline().decode('UTF-8').strip()
+            logging.info('Decoded: {}'.format(result))
+            self._callback(result)

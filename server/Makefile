@@ -1,4 +1,4 @@
-KALDI_DIR = /opt/kaldi
+KALDI_DIR = /home/jfajkowski/Projects/kaldi
 
 all:
 
