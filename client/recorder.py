@@ -4,6 +4,8 @@ import wave
 from abc import ABC, abstractmethod
 from typing import List
 
+import time
+
 
 class RecordingEvent:
     __slots__ = ('samples', 'sample_count', 'time_info', 'status')
@@ -93,7 +95,7 @@ class Recorder:
 if __name__ == '__main__':
     i = 1
     recorder = Recorder()
-    input('START')
+    time.sleep(1)
     while True:
         if input('Enter to start recording. Type "x" to exit: ') == 'x':
             break
@@ -105,6 +107,11 @@ if __name__ == '__main__':
             continue
 
         recorder.stop()
+        name = input('Enter name for file (without extension) [i]: '.format(i))
+
+        if not name:
+            name = str(i)
+
         recorder.save('{}.wav'.format(i))
         recorder.reset()
         i += 1
