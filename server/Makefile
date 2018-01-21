@@ -1,7 +1,5 @@
 KALDI_DIR = /home/jfajkowski/Projects/kaldi
 
-all:
-
 include $(KALDI_DIR)/src/kaldi.mk
 CXXFLAGS += -I $(KALDI_DIR)/src
 

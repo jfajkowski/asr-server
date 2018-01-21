@@ -49,8 +49,8 @@ int main(int argc, char *argv[]) {
             "basis-fMLLR adaptation and endpointing. Writes lattices.\n"
             "Models are specified via options.\n"
             "\n"
-            "Usage: file-decoder [options] <fst-in> "
-            "<word-syms-in> <wav-rspecifier>\n";
+            "Usage: stream-decoder [options] <fst-in>"
+            "<word-syms-in> <wav-rspecifier> <clat-wspecifier>\n";
 
         ParseOptions po(usage);
         OnlineFeaturePipelineCommandLineConfig feature_cmdline_config;
@@ -59,19 +59,17 @@ int main(int argc, char *argv[]) {
         endpoint_config.Register(&po);
         OnlineGmmDecodingConfig decode_config;
         decode_config.Register(&po);
-        BaseFloat chunk_length_secs = 0.05;
-        po.Register("chunk-length", &chunk_length_secs,
-                    "Length of chunk size in seconds, that we process.");
         po.Read(argc, argv);
 
-        if (po.NumArgs() != 3) {
+        if (po.NumArgs() != 4) {
             po.PrintUsage();
             return 1;
         }
 
-        std::string word_syms_rxfilename = po.GetArg(1),
-                    fst_rxfilename = po.GetArg(2),
-                    wav_rspecifier = po.GetArg(3);
+        std::string fst_rxfilename = po.GetArg(1),
+                    word_syms_rxfilename = po.GetArg(2),
+                    wav_rspecifier = po.GetArg(3),
+                    clat_wspecifier = po.GetArg(4);
 
         OnlineFeaturePipelineConfig feature_config(feature_cmdline_config);
         OnlineFeaturePipeline pipeline_prototype(feature_config);
@@ -80,8 +78,11 @@ int main(int argc, char *argv[]) {
         fst::SymbolTable *word_syms = fst::SymbolTable::ReadText(word_syms_rxfilename);
         fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldiGeneric(fst_rxfilename);
         Input wav_reader(wav_rspecifier);
+        CompactLatticeWriter clat_writer(clat_wspecifier);
 
-        uint32 chunk_size = 1024;
+        uint32 chunk_size = 2048;
+        uint32 bytes_per_sample = 2;
+        uint32 samples_per_chunk = chunk_size / bytes_per_sample;
         char *buffer = new char[chunk_size];
         BaseFloat samp_freq = 16000;
         int32 num_done = 0;
@@ -93,10 +94,10 @@ int main(int argc, char *argv[]) {
                                                                            adaptation_state);
 
         while (wav_reader.IsOpen()) {
-            wav_reader.Stream().read(buffer, 1024);
-            Vector<BaseFloat> wave_part(512);
+            wav_reader.Stream().read(buffer, chunk_size);
+            Vector<BaseFloat> wave_part(samples_per_chunk);
             uint16 *data_ptr = reinterpret_cast<uint16*>(buffer);
-            for (int i = 0; i < 512; ++i) {
+            for (int i = 0; i < samples_per_chunk; ++i) {
                 int16 k = *data_ptr++;
                 wave_part(i) = k;
             }
@@ -111,7 +112,16 @@ int main(int argc, char *argv[]) {
                 bool rescore_if_needed = true;
                 decoder->GetLattice(rescore_if_needed, end_of_utterance, &clat);
                 std::string transcription = get_transcription(word_syms, clat);
-                std::cout << transcription << std::endl;
+
+                if (transcription != "") {
+                    std::cerr << num_done << ' ' << transcription << std::endl;
+                    if (decode_config.acoustic_scale != 0.0) {
+                        BaseFloat inv_acoustic_scale = 1.0 / decode_config.acoustic_scale;
+                        ScaleLattice(AcousticLatticeScale(inv_acoustic_scale), &clat);
+                    }
+                    clat_writer.Write(std::to_string(num_done), clat);
+                    ++num_done;
+                }
 
                 // In an application you might avoid updating the adaptation state if
                 // you felt the utterance had low confidence.    See lat/confidence.h
@@ -122,7 +132,6 @@ int main(int argc, char *argv[]) {
                                                         pipeline_prototype,
                                                         *decode_fst,
                                                         adaptation_state);
-                ++num_done;
             }
         }
 

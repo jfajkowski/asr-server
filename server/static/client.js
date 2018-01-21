@@ -1,22 +1,77 @@
-var player = document.getElementById('player');
+var context = new (window.AudioContext || window.webkitAudioContext)();
+var bufferSize = 4096;
+var hypothesesBox = document.getElementById('hypothesesBox');
 
-var handleSuccess = function(stream) {
-    var bufferSize = 1024;
-    var inputChannels = 1;
-    var outputChannels = 1;
+var client = {};
+client.connect = function()  {
+    var ws = new WebSocket('ws://localhost:10000/websocket');
 
-    var context = new AudioContext();
-    var source = context.createMediaStreamSource(stream);
-    var processor = context.createScriptProcessor(bufferSize, inputChannels, outputChannels);
+    ws.onopen = function() {
+        console.log('ws connected');
+        client.ws = ws;
+    };
 
-    source.connect(processor);
-    processor.connect(context.destination);
+    ws.onerror = function() {
+        console.log('ws error');
+    };
 
-    processor.onaudioprocess = function(e) {
-        // Do something with the data, i.e Convert this to WAV
-        console.log(e.inputBuffer);
+    ws.onclose = function() {
+        console.log('ws closed');
+    };
+
+    ws.onmessage = function(msgevent) {
+        var hypothesis = msgevent.data;
+        hypothesesBox.value = hypothesis;
     };
 };
 
-navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-    .then(handleSuccess);
+client.send = function(frames) {
+    if (!this.ws) {
+        console.log('no connection');
+        return;
+    }
+    this.ws.send(frames);
+};
+
+context.createSpeechRecognition = function() {
+    if (!context.createScriptProcessor) {
+        node = context.createJavaScriptNode(bufferSize, 1, 1);
+    } else {
+        node = context.createScriptProcessor(bufferSize, 1, 1);
+    }
+    var resize = function(inputBuffer) {
+        var l = inputBuffer.length;
+        var outputBuffer = new Int16Array(l);
+
+        while (l--) {
+            outputBuffer[l] = inputBuffer[l] * 32768;
+        }
+
+        return outputBuffer;
+    };
+    var resampler = new Resampler(44100, 16000, 1, bufferSize);
+
+
+    node.onaudioprocess = function(e) {
+        var input = e.inputBuffer.getChannelData(0);
+        var resampled = resampler.resampler(input);
+        var resized = resize(resampled);
+        client.send(resized.buffer);
+    }
+    return node;
+};
+
+var handleSuccess = function(stream) {
+    var source = context.createMediaStreamSource(stream);
+    var gainNode = context.createGain();
+    var speechRecognitionNode = context.createSpeechRecognition();
+
+    gainNode.gain.value = 0.1;
+
+    source.connect(gainNode);
+    gainNode.connect(speechRecognitionNode);
+    speechRecognitionNode.connect(context.destination);
+};
+
+client.connect();
+navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(handleSuccess);

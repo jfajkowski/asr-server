@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
             "Models are specified via options.\n"
             "\n"
             "Usage: file-decoder [options] <fst-in> "
-            "<word-syms-in> <wav-rspecifier>\n";
+            "<word-syms-in> <wav-rspecifier> <clat-wspecifier>\n";
         
         ParseOptions po(usage);
         OnlineFeaturePipelineCommandLineConfig feature_cmdline_config;
@@ -67,14 +67,15 @@ int main(int argc, char *argv[]) {
                     "If true, apply endpoint detection");
         po.Read(argc, argv);
         
-        if (po.NumArgs() != 3) {
+        if (po.NumArgs() != 4) {
             po.PrintUsage();
             return 1;
         }
         
-        std::string word_syms_rxfilename = po.GetArg(1),
-                    fst_rxfilename = po.GetArg(2),
-                    wav_rspecifier = po.GetArg(3);
+        std::string fst_rxfilename = po.GetArg(1),
+                    word_syms_rxfilename = po.GetArg(2),
+                    wav_rspecifier = po.GetArg(3),
+                    clat_wspecifier = po.GetArg(4);
         
         OnlineFeaturePipelineConfig feature_config(feature_cmdline_config);
         OnlineFeaturePipeline pipeline_prototype(feature_config);
@@ -83,6 +84,7 @@ int main(int argc, char *argv[]) {
         fst::SymbolTable *word_syms = fst::SymbolTable::ReadText(word_syms_rxfilename);
         fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldiGeneric(fst_rxfilename);
         SequentialTableReader<WaveHolder> wav_reader(wav_rspecifier);
+        CompactLatticeWriter clat_writer(clat_wspecifier);
 
         int32 num_done = 0;
         OnlineGmmAdaptationState adaptation_state;
@@ -129,12 +131,20 @@ int main(int argc, char *argv[]) {
             bool rescore_if_needed = true;
             decoder.GetLattice(rescore_if_needed, end_of_utterance, &clat);
             std::string transcription = get_transcription(word_syms, clat);
-            std::cout << utt << '\t' << transcription << std::endl;
+
+            if (transcription != "") {
+                std::cerr << utt << ' ' << transcription << std::endl;
+                if (decode_config.acoustic_scale != 0.0) {
+                    BaseFloat inv_acoustic_scale = 1.0 / decode_config.acoustic_scale;
+                    ScaleLattice(AcousticLatticeScale(inv_acoustic_scale), &clat);
+                }
+                clat_writer.Write(utt, clat);
+                ++num_done;
+            }
 
             // In an application you might avoid updating the adaptation state if
             // you felt the utterance had low confidence.    See lat/confidence.h
             decoder.GetAdaptationState(&adaptation_state);
-            ++num_done;
         }
 
         delete word_syms;

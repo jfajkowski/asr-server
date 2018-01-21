@@ -21,22 +21,32 @@ class IndexHandler(tornado.web.RequestHandler):
         self.render('index.html')
 
 
-class FileHandler(tornado.web.RequestHandler):
+class FileClientHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.render('file_client.html')
+
+
+class StreamClientHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.render('stream_client.html')
+
+
+class UploadHandler(tornado.web.RequestHandler):
     decoder = decoding.FileDecoder()
 
     def post(self):
         wav_file = self.request.files['wav_file'][0]
-        wav_path = './uploads/' + FileHandler._unique_filename()
+        wav_path = './uploads/' + UploadHandler._unique_filename()
         with open(wav_path, 'wb') as f_out:
             f_out.write(wav_file['body'])
-        self.finish(FileHandler.decoder.decode(wav_path))
+        self.finish(UploadHandler.decoder.decode(wav_path))
 
     @staticmethod
     def _unique_filename():
         return str(uuid.uuid4())
 
 
-class StreamHandler(tornado.websocket.WebSocketHandler):
+class WebSocketHandler(tornado.websocket.WebSocketHandler):
     def open(self):
         self.__decoder = decoding.StreamDecoder(self.write_message)
         logging.info("WebSocket opened")
@@ -45,7 +55,7 @@ class StreamHandler(tornado.websocket.WebSocketHandler):
         self.__decoder.decode(message)
 
     def on_close(self):
-        del self.__decoder
+        self.__decoder.terminate()
         logging.info("WebSocket closed")
 
 
@@ -53,8 +63,10 @@ def main():
     logging.basicConfig(format='[%(asctime)s][%(levelname)s] %(name)s: %(message)s', level=logging.INFO)
     application = tornado.web.Application([
             (r'/', IndexHandler),
-            (r'/upload', FileHandler),
-            (r'/websocket', StreamHandler)
+            (r'/file-client', FileClientHandler),
+            (r'/stream-client', StreamClientHandler),
+            (r'/upload', UploadHandler),
+            (r'/websocket', WebSocketHandler)
         ],
         template_path=os.path.join(os.path.dirname(__file__), "templates"),
         static_path=os.path.join(os.path.dirname(__file__), "static")
