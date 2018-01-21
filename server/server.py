@@ -12,7 +12,7 @@ from tornado.options import define, options
 
 import decoding
 
-define('http_port', default=10000, help='run on the given port', type=int)
+define('port', default=10000, help='run on the given port', type=int)
 define('encoding', default='UTF-8', help='encoding of hypotheses', type=str)
 
 
@@ -72,8 +72,14 @@ def main():
         static_path=os.path.join(os.path.dirname(__file__), "static")
     )
 
-    http_server = tornado.httpserver.HTTPServer(application)
-    http_server.listen(options.http_port)
+    http_server = tornado.httpserver.HTTPServer(
+        application,
+        ssl_options = {
+            'certfile': 'new.cert.cert',
+            'keyfile': 'new.cert.key'
+        }
+    )
+    http_server.listen(options.port)
     tornado.ioloop.IOLoop.instance().start()
 
 

@@ -33,7 +33,6 @@ class FileDecoder:
                                                 'ark:-'], stdin=self._baseline[-1].stdout, stdout=subprocess.PIPE))
         self._baseline.append(subprocess.Popen(['/home/jfajkowski/Projects/kaldi/src/latbin/lattice-best-path',
                                                 '--word-symbol-table=model/graph/words.txt',
-                                                'ark:-',
                                                 'ark:-'], stdin=self._baseline[-1].stdout, stderr=subprocess.PIPE))
 
     def decode(self, wav_path):
@@ -82,7 +81,6 @@ class StreamDecoder:
                                                 'ark:-'], stdin=self._baseline[-1].stdout, stdout=subprocess.PIPE))
         self._baseline.append(subprocess.Popen(['/home/jfajkowski/Projects/kaldi/src/latbin/lattice-best-path',
                                                 '--word-symbol-table=model/graph/words.txt',
-                                                'ark:-',
                                                 'ark:-'], stdin=self._baseline[-1].stdout, stderr=subprocess.PIPE))
 
         self._decoding = True
@@ -91,6 +89,7 @@ class StreamDecoder:
         self._thread.start()
 
     def terminate(self):
+        self._decoding = False
         for process in self._baseline:
             process.terminate()
 

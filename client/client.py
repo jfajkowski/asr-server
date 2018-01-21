@@ -3,8 +3,9 @@ from abc import ABC, abstractmethod
 from typing import List
 
 import tornado.tcpclient
-from tornado import gen, ioloop
-from tornado.websocket import websocket_connect
+from tornado import gen, ioloop, httpclient, httputil
+from tornado.ioloop import IOLoop
+from tornado.websocket import WebSocketClientConnection
 
 from messages import Transcription
 from plotter import Plotter
@@ -62,8 +63,6 @@ class WebSocketClient(ABC):
     def write_message(self, message, binary=False):
         if self.connected:
             self.connection.write_message(message, binary)
-        else:
-           raise ConnectionError('connection closed')
 
 class StreamClient(WebSocketClient, RecordingListener):
     def __init__(self, url):
@@ -86,9 +85,36 @@ class Printer(DecodingListener):
         print(decoding_event.transcription)
 
 
+def websocket_connect(url, io_loop=None, callback=None, connect_timeout=None,
+                      on_message_callback=None, compression_options=None,
+                      ping_interval=None, ping_timeout=None,
+                      max_message_size=None):
+
+    if io_loop is None:
+        io_loop = IOLoop.current()
+    if isinstance(url, httpclient.HTTPRequest):
+        assert connect_timeout is None
+        request = url
+        # Copy and convert the headers dict/object (see comments in
+        # AsyncHTTPClient.fetch)
+        request.headers = httputil.HTTPHeaders(request.headers)
+    else:
+        request = httpclient.HTTPRequest(url, connect_timeout=connect_timeout, validate_cert=False)
+    request = httpclient._RequestProxy(
+        request, httpclient.HTTPRequest._DEFAULTS)
+    conn = WebSocketClientConnection(io_loop, request,
+                                     on_message_callback=on_message_callback,
+                                     compression_options=compression_options,
+                                     ping_interval=ping_interval,
+                                     ping_timeout=ping_timeout,
+                                     max_message_size=max_message_size)
+    if callback is not None:
+        io_loop.add_future(conn.connect_future, callback)
+    return conn.connect_future
+
 def main():
     logging.basicConfig(format='[%(asctime)s][%(levelname)s] %(name)s: %(message)s', level=logging.INFO)
-    client = StreamClient('ws://localhost:10000/websocket')
+    client = StreamClient('wss://localhost:10000/websocket')
     recorder = Recorder()
     plotter = Plotter()
     printer = Printer()

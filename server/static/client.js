@@ -4,7 +4,7 @@ var hypothesesBox = document.getElementById('hypothesesBox');
 
 var client = {};
 client.connect = function()  {
-    var ws = new WebSocket('ws://localhost:10000/websocket');
+    var ws = new WebSocket('wss://localhost:10000/websocket');
 
     ws.onopen = function() {
         console.log('ws connected');
