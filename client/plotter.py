@@ -15,7 +15,7 @@ from recorder import RecordingListener, RecordingEvent, Recorder
 class Plotter(RecordingListener):
     SAMPLE_FORMAT = pyaudio.paInt16
 
-    def __init__(self, max_fps=60, window_size=4096, sample_rate=16000,
+    def __init__(self, max_fps=60, window_size=100000, sample_rate=16000,
                  signal_min_y_axis=1):
         super().__init__()
         self.__engine = pyaudio.PyAudio()
@@ -28,13 +28,6 @@ class Plotter(RecordingListener):
         self.__sample_size = self.__engine.get_sample_size(Plotter.SAMPLE_FORMAT)
         self.__samples = bytearray()
         self.__chunk_size = window_size * self.__sample_size
-
-        self.__fig = None
-        self.__axes = None
-        self.__signal_line = None
-        self.__envelope_line = None
-        self.__spectrum_line = None
-        self.__mfcc_line = None
 
     @property
     def is_plotting(self):
@@ -50,55 +43,28 @@ class Plotter(RecordingListener):
             self.maintain_fps()
 
     def initialize(self):
-        self.__fig, self.__axes = plt.subplots(2, 2)
-
-        ax = self.__axes[0, 0]
-        ax.set_xlim(xmax=self.__window_size)
-        ax.set_ylim(-self.__signal_min_y_axis, self.__signal_min_y_axis)
-        self.__signal_line = ax.plot(np.arange(self.__window_size),
-                                     np.zeros(self.__window_size), label='signal')[0]
-        self.__envelope_line = ax.plot(np.arange(self.__window_size),
-                                       np.zeros(self.__window_size), label='envelope')[0]
-
-        ax = self.__axes[1, 0]
-        ax.set_xscale('log')
-        ax.set_xlim(xmax=self.__max_frequency)
-        ax.set_ylim(ymax=self.__signal_min_y_axis)
-        self.__spectrum_line = ax.plot(np.arange(self.__max_frequency),
-                                       np.zeros(self.__max_frequency), label='fft')[0]
-
-        ax = self.__axes[0, 1]
-        ax.xaxis.set_major_formatter(TimeFormatter())
-
+        self.__fig = plt.subplots(3, 1)[0]
         plt.ion()
         plt.legend()
-        plt.tight_layout()
+        # plt.tight_layout()
         plt.show()
 
     def update(self, signal):
-        signal_max = np.max(signal)
-        signal_envelope = np.abs(hilbert(signal))
-        spectrum = np.abs(rfft(signal, self.__max_frequency))
-        spectrum_max = np.max(spectrum)
-        normalized_spectrum = spectrum / spectrum_max
+        normalized_signal = signal / np.max(signal)
         signal_spectrogram = np.abs(librosa.stft(signal)) ** 2
         features = librosa.feature.mfcc(S=librosa.power_to_db(librosa.feature.melspectrogram(S=signal_spectrogram)))
 
 
-        if signal_max > self.__signal_min_y_axis:
-            self.__signal_min_y_axis = signal_max
-            self.__axes[0, 0].set_ylim(-self.__signal_min_y_axis, self.__signal_min_y_axis)
-
-        plt.subplot(2, 2, 2)
-        librosa.display.specshow(librosa.amplitude_to_db(signal_spectrogram, ref=np.max), y_axis='log', x_axis = 'time')
-        plt.subplot(2, 2, 4)
-        librosa.display.specshow(features, x_axis = 'time')
-
-
-
-        self.__signal_line.set_ydata(signal)
-        self.__envelope_line.set_ydata(signal_envelope)
-        self.__spectrum_line.set_ydata(normalized_spectrum)
+        plt.subplot(3, 1, 1)
+        plt.cla()
+        librosa.display.waveplot(normalized_signal, sr=self.__sample_rate, x_axis='off')
+        plt.ylabel('Amplituda')
+        plt.subplot(3, 1, 2)
+        librosa.display.specshow(librosa.amplitude_to_db(signal_spectrogram, ref=np.max), y_axis='log')
+        plt.subplot(3, 1, 3)
+        librosa.display.specshow(features, x_axis='time', y_axis='frames')
+        plt.xlabel('Czas [s]')
+        plt.ylabel('Numer\nwspółczynnika MFCC')
         self.refresh()
 
     def refresh(self):

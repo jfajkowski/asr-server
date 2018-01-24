@@ -16,19 +16,19 @@ class FileDecoder:
         self._baseline.append(subprocess.Popen(['/home/jfajkowski/Projects/kaldi/src/latbin/lattice-lmrescore',
                                                 '--lm-scale=-1.0',
                                                 'ark:-',
-                                                '/home/jfajkowski/Projects/kaldi/tools/openfst/bin/fstproject --project_output=true model/base.fst |',
+                                                '/home/jfajkowski/Projects/kaldi/tools/openfst/bin/fstproject --project_output=true model/G.fst |',
                                                 'ark:-'], stdin=self._baseline[-1].stdout, stdout=subprocess.PIPE))
-        self._baseline.append(subprocess.Popen(['/home/jfajkowski/Projects/kaldi/src/latbin/lattice-lmrescore',
+        self._baseline.append(subprocess.Popen(['/home/jfajkowski/Projects/kaldi/src/latbin/lattice-lmrescore-const-arpa',
                                                 '--lm-scale=1.0',
                                                 'ark:-',
-                                                '/home/jfajkowski/Projects/kaldi/tools/openfst/bin/fstproject --project_output=true model/rescore.fst |',
+                                                'model/G.carpa',
                                                 'ark:-'], stdin=self._baseline[-1].stdout, stdout=subprocess.PIPE))
         self._baseline.append(subprocess.Popen(['/home/jfajkowski/Projects/kaldi/src/latbin/lattice-scale',
                                                 '--inv-acoustic-scale=17',
                                                 'ark:-',
                                                 'ark:-'], stdin=self._baseline[-1].stdout, stdout=subprocess.PIPE))
         self._baseline.append(subprocess.Popen(['/home/jfajkowski/Projects/kaldi/src/latbin/lattice-add-penalty',
-                                                '--word-ins-penalty=1.0',
+                                                '--word-ins-penalty=0.0',
                                                 'ark:-',
                                                 'ark:-'], stdin=self._baseline[-1].stdout, stdout=subprocess.PIPE))
         self._baseline.append(subprocess.Popen(['/home/jfajkowski/Projects/kaldi/src/latbin/lattice-best-path',
@@ -64,19 +64,19 @@ class StreamDecoder:
         self._baseline.append(subprocess.Popen(['/home/jfajkowski/Projects/kaldi/src/latbin/lattice-lmrescore',
                                                 '--lm-scale=-1.0',
                                                 'ark:-',
-                                                '/home/jfajkowski/Projects/kaldi/tools/openfst/bin/fstproject --project_output=true model/base.fst |',
+                                                '/home/jfajkowski/Projects/kaldi/tools/openfst/bin/fstproject --project_output=true model/G.fst |',
                                                 'ark:-'], stdin=self._baseline[-1].stdout, stdout=subprocess.PIPE))
-        self._baseline.append(subprocess.Popen(['/home/jfajkowski/Projects/kaldi/src/latbin/lattice-lmrescore',
+        self._baseline.append(subprocess.Popen(['/home/jfajkowski/Projects/kaldi/src/latbin/lattice-lmrescore-const-arpa',
                                                 '--lm-scale=1.0',
                                                 'ark:-',
-                                                '/home/jfajkowski/Projects/kaldi/tools/openfst/bin/fstproject --project_output=true model/rescore.fst |',
+                                                'model/G.carpa',
                                                 'ark:-'], stdin=self._baseline[-1].stdout, stdout=subprocess.PIPE))
         self._baseline.append(subprocess.Popen(['/home/jfajkowski/Projects/kaldi/src/latbin/lattice-scale',
                                                 '--inv-acoustic-scale=17',
                                                 'ark:-',
                                                 'ark:-'], stdin=self._baseline[-1].stdout, stdout=subprocess.PIPE))
         self._baseline.append(subprocess.Popen(['/home/jfajkowski/Projects/kaldi/src/latbin/lattice-add-penalty',
-                                                '--word-ins-penalty=1.0',
+                                                '--word-ins-penalty=0.0',
                                                 'ark:-',
                                                 'ark:-'], stdin=self._baseline[-1].stdout, stdout=subprocess.PIPE))
         self._baseline.append(subprocess.Popen(['/home/jfajkowski/Projects/kaldi/src/latbin/lattice-best-path',
