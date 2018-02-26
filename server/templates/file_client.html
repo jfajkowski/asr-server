@@ -1,13 +1,15 @@
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-        <title>ASR HTTP Server</title>
-    </head>
-    <body>
-        <form enctype="multipart/form-data" action="/upload" method="POST">
-            <input type="file" name="wav_file" />
-            <input type="submit" value="upload" />
-        </form>
-    </body>
-</html>
+{% extends "base.html" %}
+
+{% block content %}
+    <h1 class="w3-text-theme">Hypotheses:</h1>
+    <div class="w3-container" id="hypotheses">
+        {% for hypothesis in hypotheses %}
+            <p>{{ hypothesis }}</p>
+        {% end %}
+    </div>
+
+    <form enctype="multipart/form-data" action="/upload" method="POST">
+        <input type="file" class="w3-input" name="wav_file" multiple>
+        <input type="submit" class="w3-button w3-round w3-margin w3-theme" value="Upload">
+    </form>
+{% end %}

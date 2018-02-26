@@ -1,6 +1,7 @@
 var context = new (window.AudioContext || window.webkitAudioContext)();
 var bufferSize = 4096;
-var hypothesesBox = document.getElementById('hypothesesBox');
+var hypothesesBox = document.getElementById('hypotheses');
+var clearButton = document.getElementById('clear');
 
 var client = {};
 client.connect = function()  {
@@ -21,7 +22,7 @@ client.connect = function()  {
 
     ws.onmessage = function(msgevent) {
         var hypothesis = msgevent.data;
-        hypothesesBox.value = hypothesis;
+        hypothesesBox.innerHTML += '<p>' + hypothesis + '</p>';
     };
 };
 
@@ -54,9 +55,14 @@ context.createSpeechRecognition = function() {
 
     node.onaudioprocess = function(e) {
         var input = e.inputBuffer.getChannelData(0);
+        var output = e.outputBuffer.getChannelData(0);
         var resampled = resampler.resampler(input);
         var resized = resize(resampled);
         client.send(resized.buffer);
+
+        for (var i = 0; i < bufferSize; i++) {
+            output[i] = input[i];
+        }
     }
     return node;
 };
@@ -72,6 +78,10 @@ var handleSuccess = function(stream) {
     gainNode.connect(speechRecognitionNode);
     speechRecognitionNode.connect(context.destination);
 };
+
+clearButton.onclick = function() {
+    hypothesesBox.innerHTML = '';
+}
 
 client.connect();
 navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(handleSuccess);

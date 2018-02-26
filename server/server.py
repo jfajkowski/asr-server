@@ -23,7 +23,7 @@ class IndexHandler(tornado.web.RequestHandler):
 
 class FileClientHandler(tornado.web.RequestHandler):
     def get(self):
-        self.render('file_client.html')
+        self.render('file_client.html', hypotheses=[])
 
 
 class StreamClientHandler(tornado.web.RequestHandler):
@@ -35,11 +35,16 @@ class UploadHandler(tornado.web.RequestHandler):
     decoder = decoding.FileDecoder()
 
     def post(self):
-        wav_file = self.request.files['wav_file'][0]
-        wav_path = './uploads/' + UploadHandler._unique_filename()
-        with open(wav_path, 'wb') as f_out:
-            f_out.write(wav_file['body'])
-        self.finish(UploadHandler.decoder.decode(wav_path))
+        hypotheses = []
+        if self.request.files:
+            for file in self.request.files['wav_file']:
+                wav_path = './uploads/' + UploadHandler._unique_filename()
+                with open(wav_path, 'wb') as f_out:
+                    f_out.write(file['body'])
+                hypothesis = UploadHandler.decoder.decode(wav_path)
+                hypotheses.append(hypothesis)
+        self.render('file_client.html', hypotheses=hypotheses)
+
 
     @staticmethod
     def _unique_filename():
